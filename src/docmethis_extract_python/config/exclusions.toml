@@ -1,0 +1,23 @@
+# Default exclusions applied to every analysis.
+# Users can add patterns through [tool.docmethis] in the analyzed project.
+patterns = [
+    "__pycache__/",
+    ".git/",
+    ".tox/",
+    ".venv/",
+    "venv/",
+    "env/",
+    ".eggs/",
+    "*.egg-info/",
+    "vendor/",
+    "third_party/",
+    "*_generated.py",
+    "*_pb2.py",
+    "*_pb2_grpc.py",
+    "setup.py",
+    "build/",
+    "dist/",
+    ".mypy_cache/",
+    ".pytest_cache/",
+    ".ruff_cache/",
+]

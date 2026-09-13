@@ -1,0 +1,18 @@
+# ============================================================
+# Policies de génération accessibles au projet consommateur
+# ============================================================
+
+[fix.default]
+model = "cohere/north-mini-code:free"
+max_attempts = 3
+timeout_seconds = 30.0
+token_budget = 3000
+prompt_variant = "compact"
+structured_output_mode = "guided_json"
+
+[fix.default.generation_options]
+temperature = 0.6
+seed = 0
+max_tokens = 2000
+no_thinking = true
+reasoning_effort = "none"

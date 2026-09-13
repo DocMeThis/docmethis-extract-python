@@ -1,0 +1,23 @@
+fail_fast: true
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        always_run: true
+        name: Ruff Lint Check
+        entry: uv run ruff check --fix
+        language: system
+        types: [python, pyi]
+      - id: ruff-format
+        always_run: true
+        name: Ruff Format
+        entry: uv run ruff format
+        language: system
+        types: [python, pyi]
+      - id: contract-guard
+        name: Extract-python contract guard
+        entry: python scripts/pre_push_contract_guard.py
+        language: python
+        stages: [pre-push]
+        pass_filenames: false
+        always_run: true

@@ -1,0 +1,93 @@
+# Copyright (c) 2026 DocMeThis SAS. All rights reserved.
+
+"""Stable inter-package API for downstream DocMeThis distributions."""
+
+from docmethis_extract_python.static_extraction.__main__ import analyze_project, apply_project_passes
+from docmethis_extract_python.static_extraction.ast_analysis import extract_module_record
+from docmethis_extract_python.static_extraction.callgraph_ast import build_callgraph
+from docmethis_extract_python.static_extraction.configuration import ConfigurationDocmethis, load_configuration
+from docmethis_extract_python.static_extraction.models import (
+    MISSING_VALUE,
+    SPECIAL_VALUE,
+    VERSION_SCHEMA_PROJECT_RECORD,
+    CallgraphEdge,
+    ClassHierarchy,
+    ClassRecord,
+    Complexity,
+    Confidence,
+    Decorator,
+    ExceptionRecord,
+    FunctionRecord,
+    MethodOrigin,
+    MethodType,
+    ModuleRecord,
+    Parameter,
+    ParameterType,
+    ProjectRecord,
+    PropertyAccessor,
+    Provenance,
+    RaisedCondition,
+    ResolvedTypes,
+    Signature,
+    TypeInfo,
+    UsageExample,
+    Visibility,
+    deserialize_project_record,
+    implicit_receiver_exclusion_reason,
+    iter_functions,
+    name_simple,
+    serialize_project,
+)
+from docmethis_extract_python.static_extraction.traversal import (
+    effective_visibility,
+    is_stub_file,
+    is_test_file,
+    resolve_module_name,
+)
+from docmethis_extract_python.static_extraction.type_resolution import exception_escapes
+from docmethis_extract_python.time import utc_now_iso
+
+__all__ = [
+    "MISSING_VALUE",
+    "SPECIAL_VALUE",
+    "VERSION_SCHEMA_PROJECT_RECORD",
+    "CallgraphEdge",
+    "ClassHierarchy",
+    "ClassRecord",
+    "Complexity",
+    "Confidence",
+    "ConfigurationDocmethis",
+    "Decorator",
+    "ExceptionRecord",
+    "FunctionRecord",
+    "MethodOrigin",
+    "MethodType",
+    "ModuleRecord",
+    "Parameter",
+    "ParameterType",
+    "ProjectRecord",
+    "PropertyAccessor",
+    "Provenance",
+    "RaisedCondition",
+    "ResolvedTypes",
+    "Signature",
+    "TypeInfo",
+    "UsageExample",
+    "Visibility",
+    "analyze_project",
+    "apply_project_passes",
+    "build_callgraph",
+    "deserialize_project_record",
+    "effective_visibility",
+    "exception_escapes",
+    "extract_module_record",
+    "implicit_receiver_exclusion_reason",
+    "is_stub_file",
+    "is_test_file",
+    "iter_functions",
+    "load_configuration",
+    "name_simple",
+    "resolve_module_name",
+    "serialize_project",
+    "utc_now_iso",
+]
