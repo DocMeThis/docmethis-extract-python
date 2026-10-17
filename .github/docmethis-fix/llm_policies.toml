@@ -1,18 +1,18 @@
 # ============================================================
-# Policies de génération accessibles au projet consommateur
+# Generation policies available to the consuming project
 # ============================================================
 
 [fix.default]
-model = "cohere/north-mini-code:free"
+model = "deepseek-v4.1-flash"
 max_attempts = 3
 timeout_seconds = 30.0
 token_budget = 3000
 prompt_variant = "compact"
-structured_output_mode = "guided_json"
+# Native JSON Schema support varies across provider routes; Fix still validates JSON locally.
+structured_output_mode = "json_prompted"
 
 [fix.default.generation_options]
 temperature = 0.6
 seed = 0
 max_tokens = 2000
-no_thinking = true
 reasoning_effort = "none"
