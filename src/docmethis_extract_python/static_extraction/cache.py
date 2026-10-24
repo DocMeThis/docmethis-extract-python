@@ -33,11 +33,11 @@ logger = logging.getLogger(__name__)
 
 CACHE_FILE_NAME = ".docmethis_cache.json"
 
-# Serialized schema version. Increment when a field is added, removed, or
-# redefined in ModuleRecord/ClassRecord/FunctionRecord. Otherwise an entry written
+# Serialized schema version. Increment when a field or its inference is added,
+# removed, or redefined in ModuleRecord/ClassRecord/FunctionRecord. Otherwise an entry written
 # by an older version reloads with defaults for new fields (for example,
 # has_overloads=False in a pre-it.10 cache) without reporting an error.
-CACHE_SCHEMA_VERSION = 5
+CACHE_SCHEMA_VERSION = 7
 
 # ConfigurationDocmethis fields that change a ModuleRecord for identical source.
 # They are part of the fingerprint, so changing them must invalidate the cache.

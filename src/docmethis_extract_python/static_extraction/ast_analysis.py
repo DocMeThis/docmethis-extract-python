@@ -35,6 +35,7 @@ from docmethis_extract_python.static_extraction.models import (
     ImportRecord,
     MethodType,
     ModuleRecord,
+    NormalReturnStatus,
     Parameter,
     ParameterType,
     PropertyAccessor,
@@ -45,6 +46,7 @@ from docmethis_extract_python.static_extraction.models import (
     Visibility,
     name_simple,
 )
+from docmethis_extract_python.static_extraction.normal_return import infer_normal_return_status
 from docmethis_extract_python.static_extraction.source_code_extraction import (
     build_class_skeleton,
     build_module_skeleton,
@@ -755,6 +757,7 @@ class ExtractionVisitor(ast.NodeVisitor):
             io_effects=detect_io(node),
             io_effects_confidence=Confidence.EXPLICIT,
             source_code=extract_source_function(node, self._lines) if self._lines else None,
+            normal_return_status=(NormalReturnStatus.UNKNOWN if overloads is not None else infer_normal_return_status(node)),
             exceptions=exceptions,
             exceptions_confidence=Confidence.EXPLICIT,
             except_blocks=except_blocks,

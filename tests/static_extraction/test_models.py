@@ -13,6 +13,7 @@ from docmethis_extract_python.static_extraction.models import (
     FunctionRecord,
     MethodType,
     ModuleRecord,
+    NormalReturnStatus,
     ParameterType,
     ProjectRecord,
     PropertyAccessor,
@@ -142,6 +143,7 @@ class TestFunctionRecord:
         assert record.complexity is None
         assert record.profiling is None
         assert record.profiling_confidence is Confidence.ABSENT
+        assert record.normal_return_status is NormalReturnStatus.UNKNOWN
 
     def test_cache_fields_default(self) -> None:
         record = _make_function_record()
@@ -258,6 +260,7 @@ class TestSerialisation:
             file_hash="abc123",
             method_kind=MethodType.PROPERTY,
             property_accessor=PropertyAccessor.SETTER,
+            normal_return_status=NormalReturnStatus.PROVEN_ABSENT,
         )
         data = json.loads(
             serialize_project(
@@ -283,6 +286,7 @@ class TestSerialisation:
         assert restored.property_accessor is PropertyAccessor.SETTER
         assert restored.visibility is original.visibility
         assert restored.signature_confidence is Confidence.ABSENT
+        assert restored.normal_return_status is NormalReturnStatus.PROVEN_ABSENT
         assert restored.file_hash == "abc123"
 
     def test_class_record_roundtrip(self) -> None:
@@ -373,6 +377,13 @@ class TestSerialisation:
         assert fn["method_kind"] == "function"
         assert fn["visibility"] == "public"
         assert fn["signature_confidence"] == "absent"
+        assert fn["normal_return_status"] == "unknown"
+
+    def test_project_schema_version_increments_for_normal_return_field(self) -> None:
+        """The serialized public model uses the schema version carrying normal-return status."""
+        project_record = ProjectRecord(project_root=Path("/projet"), project_name="test")
+        data = json.loads(serialize_project(project_record))
+        assert data["schema_version"] == 3
 
     def test_valid_json(self) -> None:
         project_record = ProjectRecord(

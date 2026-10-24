@@ -74,6 +74,25 @@ class Confidence(enum.Enum):
     ABSENT = "absent"
 
 
+class NormalReturnStatus(enum.StrEnum):
+    """Conservative AST finding about whether a function can return normally.
+
+    Attributes
+    ----------
+    POSSIBLE
+        Class attribute of NormalReturnStatus whose value is the string "possible".
+    PROVEN_ABSENT
+        Class attribute PROVEN_ABSENT of NormalReturnStatus, a StrEnum member with value "proven_absent".
+    UNKNOWN
+        A string enum whose members are POSSIBLE, PROVEN_ABSENT, and UNKNOWN.
+
+    """
+
+    POSSIBLE = "possible"
+    PROVEN_ABSENT = "proven_absent"
+    UNKNOWN = "unknown"
+
+
 class Provenance(enum.Enum):
     """Source of extracted data.
 
@@ -862,6 +881,8 @@ class FunctionRecord:
         Confidence of the ``io_effects`` field.
     source_code : str | None
         Source code
+    normal_return_status : NormalReturnStatus
+        Conservative control-flow result: a normal return is possible, proven absent, or unknown.
     exceptions : list[ExceptionRecord] | None
         Exceptions
     exceptions_confidence : Confidence
@@ -944,6 +965,7 @@ class FunctionRecord:
     io_effects_confidence: Confidence = field(default=Confidence.ABSENT)
 
     source_code: str | None = None
+    normal_return_status: NormalReturnStatus = NormalReturnStatus.UNKNOWN
 
     exceptions: list[ExceptionRecord] | None = None
     exceptions_confidence: Confidence = field(default=Confidence.ABSENT)
@@ -1174,7 +1196,7 @@ class ProjectRecord:
 # Serialization / deserialization
 # ---------------------------------------------------------------------------
 
-VERSION_SCHEMA_PROJECT_RECORD = 2
+VERSION_SCHEMA_PROJECT_RECORD = 3
 
 
 def _convert_for_json(obj: object) -> str | int | float | bool | None:
@@ -1693,6 +1715,7 @@ def deserialize_function_record(data: dict[str, Any]) -> FunctionRecord:
     data["file_path"] = Path(data["file_path"])
     data["method_kind"] = MethodType(data["method_kind"])
     data["visibility"] = Visibility(data["visibility"])
+    data["normal_return_status"] = NormalReturnStatus(data.get("normal_return_status", NormalReturnStatus.UNKNOWN))
     if data.get("property_accessor") is not None:
         data["property_accessor"] = PropertyAccessor(data["property_accessor"])
     for mapping_key in [c for c in data if c.endswith("_confidence")]:

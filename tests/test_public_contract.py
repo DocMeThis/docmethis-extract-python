@@ -52,6 +52,7 @@ def test_inter_package_api_is_available() -> None:
         == "implicit_instance_receiver"
     )
     assert callable(api.iter_functions)
+    assert api.NormalReturnStatus.PROVEN_ABSENT.value == "proven_absent"
     assert callable(api.serialize_project)
     assert callable(api.deserialize_project_record)
     assert api.utc_now_iso().endswith("Z")
