@@ -8,6 +8,8 @@ import dataclasses
 import json
 from typing import TYPE_CHECKING
 
+import pytest
+
 from docmethis_extract_python.static_extraction.cache import (
     CACHE_FILE_NAME,
     EXTRACTION_CONFIG_FIELDS,
@@ -129,14 +131,22 @@ class TestCacheFingerprint:
         other_configuration = ConfigurationDocmethis(extra_exclude_patterns=("vendor/",))
         assert load_cache(tmp_path, other_configuration) != {}
 
-    def test_different_schema_version_invalidates_cache(self, tmp_path: Path) -> None:
-        """A cache written under another schema is not loaded with defaults."""
+    @pytest.mark.parametrize("schema_version", [5, 6])
+    def test_different_schema_version_invalidates_cache(self, tmp_path: Path, schema_version: int) -> None:
+        """A cache written under another schema is not loaded with defaults.
+
+        Parameters
+        ----------
+        schema_version : int
+            Accepts an integer schema version that overwrites the stored cache fingerprint's schema version field, and the test
+            verifies that loading the cache under the configuration yields an empty dictionary.
+        """
         module = _make_module_record(tmp_path)
         save_cache(tmp_path, [module], CONFIG)
 
         source_path = tmp_path / CACHE_FILE_NAME
         data = json.loads(source_path.read_text(encoding="utf-8"))
-        data["empreinte"]["version_schema"] = 999
+        data["empreinte"]["version_schema"] = schema_version
         source_path.write_text(json.dumps(data), encoding="utf-8")
 
         assert load_cache(tmp_path, CONFIG) == {}

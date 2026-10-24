@@ -12,7 +12,7 @@ from docmethis_extract_python.static_extraction.ast_analysis import extract_modu
 
 if TYPE_CHECKING:
     from pathlib import Path
-from docmethis_extract_python.static_extraction.models import MISSING_VALUE, deserialize_function_record
+from docmethis_extract_python.static_extraction.models import MISSING_VALUE, NormalReturnStatus, deserialize_function_record
 from docmethis_extract_python.static_extraction.traversal import resolve_module_name
 
 
@@ -304,7 +304,7 @@ class TestOverload:
         assert len(by_name["mod.b"].overload_signatures) == 1
 
     def test_cache_compatibility_with_missing_fields(self, tmp_path: Path) -> None:
-        """Deserializing a cache without has_overloads/overload_signatures does not raise."""
+        """Deserializing an old record without overload or normal-return fields applies conservative defaults."""
         f = _write_py(tmp_path / "mod.py", "def foo(): pass\n")
         module_name = resolve_module_name(f, tmp_path)
         record = extract_module_record(f, module_name, is_stub=False, is_test=False, file_hash="abc")
@@ -314,7 +314,9 @@ class TestOverload:
         # Simulate a cache produced before iteration 10 by removing new fields.
         data.pop("has_overloads", None)
         data.pop("overload_signatures", None)
+        data.pop("normal_return_status", None)
 
         restored = deserialize_function_record(data)
         assert restored.has_overloads is False
         assert restored.overload_signatures == []
+        assert restored.normal_return_status is NormalReturnStatus.UNKNOWN

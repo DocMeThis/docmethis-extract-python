@@ -147,6 +147,7 @@ The public root package exposes the core record types:
 | `ClassRecord` | A class, its hierarchy and methods |
 | `FunctionRecord` | A function or method with progressive analysis fields |
 | `ProjectRecord` | The complete project-level result |
+| `NormalReturnStatus` | Conservative `possible`, `proven_absent` or `unknown` normal-return status |
 | `Confidence` | Confidence of an extracted or inferred field |
 | `Provenance` | Origin of a field, such as annotation, test or callgraph |
 | `Visibility` | Public, protected or private visibility |
@@ -157,9 +158,16 @@ The broader inter-package surface in `docmethis_extract_python.api` also
 provides configuration loading, module extraction, callgraph construction,
 function iteration, import traversal and JSON serialization helpers.
 
-`serialize_project()` emits a JSON object with `schema_version = 2`.
+`serialize_project()` emits a JSON object with `schema_version = 3`.
 `deserialize_project_record()` reconstructs a `ProjectRecord` from that
 representation:
+
+Each `FunctionRecord` exposes `normal_return_status`. The AST analysis reports
+`proven_absent` only when it can establish that no normal return path exists;
+opaque control flow and unsupported cases remain `unknown`, while a possible
+explicit or implicit return is `possible`. This fact is independent of the
+function's return annotation and does not judge whether that annotation is
+valid Python.
 
 ```python
 import json
