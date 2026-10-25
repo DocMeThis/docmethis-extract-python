@@ -86,7 +86,20 @@ def discover_files(root: Path, configuration: ConfigurationDocmethis) -> list[Pa
 
 
 def _git_files(root: Path) -> list[Path] | None:
-    """Return Git-tracked and non-ignored files below ``root``, or ``None`` outside Git."""
+    """Return Git-tracked and non-ignored files below ``root``, or ``None`` outside Git.
+
+    Parameters
+    ----------
+    root : Path
+        Accepts a root filesystem path under which Git-tracked and non-ignored files are enumerated. Returns the list of such file
+        paths, or None when Git is unavailable, the path is outside a Git repository, or Git invocation fails.
+
+    Returns
+    -------
+    list[Path] | None
+        Returns a list of paths for Git-tracked and non-ignored files below root. Returns None when Git is not found, when root is
+        outside a Git repository, or when a Git command fails or times out.
+    """
     git = shutil.which("git")
     if git is None:
         return None
