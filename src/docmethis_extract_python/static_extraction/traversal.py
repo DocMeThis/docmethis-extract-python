@@ -16,14 +16,16 @@ from __future__ import annotations
 import ast
 import fnmatch
 import logging
+import os
 import re
+import shutil
+import subprocess
 import sys
 import tomllib
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from docmethis_extract_python.static_extraction.configuration import ConfigurationDocmethis
     from docmethis_extract_python.static_extraction.models import ImportRecord, ProjectRecord
 
@@ -61,10 +63,13 @@ def discover_files(root: Path, configuration: ConfigurationDocmethis) -> list[Pa
         A list of absolute Path objects for the discovered Python files, sorted in ascending order.
 
     """
+    root = root.resolve()
     patterns = configuration.all_exclusion_patterns
+    git_files = _git_files(root)
+    candidates = git_files if git_files is not None else root.rglob("*")
     files: list[Path] = []
 
-    for source_path in root.rglob("*"):
+    for source_path in candidates:
         if not source_path.is_file():
             continue
 
@@ -78,6 +83,46 @@ def discover_files(root: Path, configuration: ConfigurationDocmethis) -> list[Pa
 
     files.sort()
     return files
+
+
+def _git_files(root: Path) -> list[Path] | None:
+    """Return Git-tracked and non-ignored files below ``root``, or ``None`` outside Git."""
+    git = shutil.which("git")
+    if git is None:
+        return None
+
+    try:
+        repository = subprocess.run(  # noqa: S603 - executable is resolved from PATH; arguments are not shell-interpreted.
+            [git, "-C", str(root), "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            check=True,
+            timeout=5,
+        )
+        repository_root = Path(os.fsdecode(repository.stdout).strip()).resolve()
+        relative_root = root.relative_to(repository_root)
+        pathspec = "." if not relative_root.parts else relative_root.as_posix()
+        result = subprocess.run(  # noqa: S603 - executable is resolved from PATH; arguments are not shell-interpreted.
+            [
+                git,
+                "-C",
+                str(repository_root),
+                "ls-files",
+                "--cached",
+                "--others",
+                "--exclude-standard",
+                "--full-name",
+                "-z",
+                "--",
+                pathspec,
+            ],
+            capture_output=True,
+            check=True,
+            timeout=5,
+        )
+    except (OSError, ValueError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        return None
+
+    return [repository_root / os.fsdecode(path) for path in result.stdout.split(b"\0") if path]
 
 
 def _is_excluded(source_path: Path, root: Path, patterns: tuple[str, ...]) -> bool:

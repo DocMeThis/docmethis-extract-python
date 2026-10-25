@@ -139,6 +139,11 @@ Directory patterns ending in `/` match path components. Other patterns match
 file names. CLI `--full-reanalysis` is an execution option and ignores the
 cache for that run.
 
+When the analyzed root is inside a Git worktree, discovery uses Git's tracked
+and non-ignored file list. This excludes ignored temporary copies while keeping
+tracked files analyzable. Outside Git, discovery falls back to filesystem
+traversal.
+
 Exception depths count call edges, not syntactic AST nesting. Analysis defaults
 to two edges; documentation defaults to one (local raises plus direct callees).
 Both are strict non-negative integers, and documentation must not exceed analysis.
