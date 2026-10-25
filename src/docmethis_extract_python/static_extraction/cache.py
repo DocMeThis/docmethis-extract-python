@@ -37,7 +37,7 @@ CACHE_FILE_NAME = ".docmethis_cache.json"
 # removed, or redefined in ModuleRecord/ClassRecord/FunctionRecord. Otherwise an entry written
 # by an older version reloads with defaults for new fields (for example,
 # has_overloads=False in a pre-it.10 cache) without reporting an error.
-CACHE_SCHEMA_VERSION = 7
+CACHE_SCHEMA_VERSION = 8
 
 # ConfigurationDocmethis fields that change a ModuleRecord for identical source.
 # They are part of the fingerprint, so changing them must invalidate the cache.

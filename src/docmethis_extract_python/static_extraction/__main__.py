@@ -149,7 +149,7 @@ def analyze_project(
         quality_report=report,
         analysis_timestamp=timestamp,
     )
-    apply_project_passes(project_record)
+    apply_project_passes(project_record, exception_analysis_depth=configuration.exception_analysis_depth)
     if not skip_dynamic:
         link_test_functions(modules)
         result_tests = execute_tests(root)
@@ -159,7 +159,7 @@ def analyze_project(
     return project_record
 
 
-def apply_project_passes(project_record: ProjectRecord) -> dict[str, list[CallgraphEdge]]:
+def apply_project_passes(project_record: ProjectRecord, *, exception_analysis_depth: int = 2) -> dict[str, list[CallgraphEdge]]:
     """Apply the complete static enrichment pipeline and return its callgraph.
 
     Parameters
@@ -167,6 +167,8 @@ def apply_project_passes(project_record: ProjectRecord) -> dict[str, list[Callgr
     project_record : ProjectRecord
         The ProjectRecord instance to be processed by the static enrichment pipeline; the passes update it with derived data and
         use it to build the callgraph.
+    exception_analysis_depth : int
+        Maximum number of call edges followed for exception propagation. Zero keeps local facts only.
 
     Returns
     -------
@@ -178,7 +180,7 @@ def apply_project_passes(project_record: ProjectRecord) -> dict[str, list[Callgr
     compute_project_percentiles(project_record)
     analyze_inheritance_project(project_record)
     callgraph = build_callgraph(project_record)
-    propagate_exceptions_via_callgraph(project_record, callgraph)
+    propagate_exceptions_via_callgraph(project_record, callgraph, max_depth=exception_analysis_depth)
     classify_imports(project_record)
     return callgraph
 

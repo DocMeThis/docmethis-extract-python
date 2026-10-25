@@ -492,6 +492,9 @@ class ExceptionRecord:
         Present when the raise is on a deterministic if branch
     provenance : Provenance
         It.8: CALLGRAPH_PROPAGATION when propagated
+    propagation_depth : int | None
+        Minimum call distance: zero for local raises, positive for propagated facts.
+        Omission initializes local facts at zero and propagated facts at one.
 
     """
 
@@ -502,6 +505,19 @@ class ExceptionRecord:
     chained_from: bool = False  # True for `raise X from e`
     condition: RaisedCondition | None = None  # present on a deterministic if branch
     provenance: Provenance = Provenance.LOCAL_INFERENCE  # it.8: CALLGRAPH_PROPAGATION when propagated
+    propagation_depth: int | None = None
+
+    def __post_init__(self) -> None:
+        """Keep the minimum call distance explicit, with local raises at zero."""
+        self.provenance = Provenance(self.provenance)
+        if self.propagation_depth is None:
+            self.propagation_depth = 1 if self.provenance is Provenance.CALLGRAPH_PROPAGATION else 0
+        if type(self.propagation_depth) is not int or self.propagation_depth < 0:
+            message = "propagation_depth must be a non-negative integer."
+            raise ValueError(message)
+        if (self.provenance is Provenance.CALLGRAPH_PROPAGATION) != (self.propagation_depth > 0):
+            message = "Only propagated exceptions may have a positive propagation_depth."
+            raise ValueError(message)
 
 
 @dataclass
@@ -1196,7 +1212,7 @@ class ProjectRecord:
 # Serialization / deserialization
 # ---------------------------------------------------------------------------
 
-VERSION_SCHEMA_PROJECT_RECORD = 3
+VERSION_SCHEMA_PROJECT_RECORD = 4
 
 
 def _convert_for_json(obj: object) -> str | int | float | bool | None:
@@ -1424,6 +1440,9 @@ def _deserialize_exception_record(data: dict[str, Any]) -> ExceptionRecord:
         the nested raised condition and provenance.
 
     """
+    if type(data["propagation_depth"]) is not int:
+        message = "Serialized propagation_depth must be a non-negative integer."
+        raise ValueError(message)
     return ExceptionRecord(
         exception_type=data["exception_type"],
         message=data.get("message"),
@@ -1432,6 +1451,7 @@ def _deserialize_exception_record(data: dict[str, Any]) -> ExceptionRecord:
         chained_from=data.get("chained_from", False),
         condition=_deserialize_raised_condition(data.get("condition")),
         provenance=Provenance(data.get("provenance", Provenance.LOCAL_INFERENCE.value)),
+        propagation_depth=data["propagation_depth"],
     )
 
 

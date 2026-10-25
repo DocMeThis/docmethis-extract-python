@@ -131,11 +131,26 @@ specific exclusions or tune mixin detection as needed:
 [tool.docmethis]
 exclude_patterns = ["generated/", "fixtures/"]
 mixin_max_methods = 8
+exception_analysis_depth = 2
+exception_documentation_depth = 1
 ```
 
 Directory patterns ending in `/` match path components. Other patterns match
 file names. CLI `--full-reanalysis` is an execution option and ignores the
 cache for that run.
+
+Exception depths count call edges, not syntactic AST nesting. Analysis defaults
+to two edges; documentation defaults to one (local raises plus direct callees).
+Both are strict non-negative integers, and documentation must not exceed analysis.
+For A → B → C, documentary depth 1 includes local raises from A and B, not C.
+Analysis 4/documentation 0 is valid: all analyzed facts remain available to DIA,
+while only local exceptions belong in `Raises`. Documentary scope is enforced by
+Verify and its consumers, not by discarding AST facts.
+
+Project passes respect caught exceptions and cycles and retain the minimum
+`ExceptionRecord.propagation_depth` for each distinct fact. Local raises have
+distance 0. Raw module caches are saved before enrichment; changing depths
+recomputes project passes while allowing reuse of unchanged raw modules.
 
 ## Extracted Model
 
@@ -158,7 +173,7 @@ The broader inter-package surface in `docmethis_extract_python.api` also
 provides configuration loading, module extraction, callgraph construction,
 function iteration, import traversal and JSON serialization helpers.
 
-`serialize_project()` emits a JSON object with `schema_version = 3`.
+`serialize_project()` emits a JSON object with `schema_version = 4`.
 `deserialize_project_record()` reconstructs a `ProjectRecord` from that
 representation:
 

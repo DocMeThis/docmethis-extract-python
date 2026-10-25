@@ -11,7 +11,7 @@ Sources in descending priority (explicit annotations are handled upstream):
 A resolved type is never replaced.
 
 Iteration 8 (F16 phase 2) - exception propagation through the callgraph:
-``propagate_exceptions_via_callgraph`` walks the callgraph for two levels and
+``propagate_exceptions_via_callgraph`` walks the configured number of call edges and
 adds uncaught exceptions from local target_qnames to ``FunctionRecord.exceptions``.
 """
 
@@ -20,6 +20,7 @@ from __future__ import annotations
 import ast
 import logging
 import sys
+from collections import deque
 from pathlib import Path
 
 from docmethis_extract_python.static_extraction.ast_parser import parse_file
@@ -1092,6 +1093,7 @@ def _add_propagated_exception(
     source: ExceptionRecord,
     origin_line: int,
     existing: set[_ExceptionIdentity],
+    depth: int,
 ) -> None:
     """Add one propagated record without discarding source facts.
 
@@ -1109,6 +1111,8 @@ def _add_propagated_exception(
         Line number of the caller's callsite where the propagated exception becomes observable.
     existing : set[_ExceptionIdentity]
         Stable identities already recorded for the current caller.
+    depth : int
+        Minimum number of call edges from the caller to the originating local raise.
 
     """
     propagated = ExceptionRecord(
@@ -1119,6 +1123,7 @@ def _add_propagated_exception(
         chained_from=source.chained_from,
         condition=source.condition,
         provenance=Provenance.CALLGRAPH_PROPAGATION,
+        propagation_depth=depth,
     )
     identity = _exception_identity(propagated)
     if identity in existing:
@@ -1131,14 +1136,14 @@ def _add_propagated_exception(
         fn.exceptions_confidence = Confidence.INFERRED_HIGH
 
 
-def propagate_exceptions_via_callgraph(
+def propagate_exceptions_via_callgraph(  # noqa: C901 - bounded paths, cycle checks and per-call handlers.
     project_record: ProjectRecord,
     callgraph: dict[str, list[CallgraphEdge]],
     max_depth: int = _DEFAULT_MAX_DEPTH,
 ) -> None:
     """Enrich ``FunctionRecord.exceptions`` through callgraph propagation.
 
-    For each function ``f``, walk local target_qnames for two levels (DEC-009)
+    For each function ``f``, walk local target_qnames up to ``max_depth`` edges
     from a pre-propagation snapshot and add uncaught exceptions with:
     - ``confidence = INFERRED_HIGH`` (updated on ``fn.exceptions_confidence``)
     - ``provenance = CALLGRAPH_PROPAGATION`` (implicitly added here)
@@ -1165,50 +1170,40 @@ def propagate_exceptions_via_callgraph(
         Mapping from each caller function's qualified name to a list of CallgraphEdge objects representing outgoing call edges
         from that caller to its callees.
     max_depth : int
-        Maximum depth of the callgraph to traverse when propagating exceptions. Direct callees are always considered; second-level
-        callees are considered only when max_depth is at least the default depth used by the function.
+        Maximum number of call edges to traverse. Zero retains local facts only.
+        Every escaping fact keeps its minimum call distance; caught exceptions and cyclic paths are excluded.
 
     """
+    if type(max_depth) is not int or max_depth < 0:
+        message = "max_depth must be a non-negative integer."
+        raise ValueError(message)
     index_fn = _index_functions_project(project_record)
+    for fn in index_fn.values():
+        if fn.exceptions is not None:
+            previous_count = len(fn.exceptions)
+            fn.exceptions = [
+                exception for exception in fn.exceptions if exception.provenance is not Provenance.CALLGRAPH_PROPAGATION
+            ]
+            if previous_count and not fn.exceptions and fn.exceptions_confidence is Confidence.INFERRED_HIGH:
+                fn.exceptions_confidence = Confidence.ABSENT
     source_exceptions = {qname: tuple(fn.exceptions or []) for qname, fn in index_fn.items()}
 
     for caller_qname in sorted(index_fn):
         fn = index_fn[caller_qname]
         existing = {_exception_identity(exception) for exception in fn.exceptions or []}
-        caller_edges = sorted(
-            (
-                edge
-                for edge in callgraph.get(caller_qname, [])
-                if not edge.is_external and edge.target_qname in index_fn and edge.target_qname != caller_qname
-            ),
-            key=lambda edge: (edge.line, edge.target_qname, edge.call_type, edge.external_lib or ""),
-        )
-
-        for edge1 in caller_edges:
-            target1 = index_fn[edge1.target_qname]
-            for exception in source_exceptions[edge1.target_qname]:
-                if exception_escapes(target1, exception) and not _is_caught_at(fn, exception.exception_type, edge1.line):
-                    _add_propagated_exception(fn, exception, edge1.line, existing)
-
-            if max_depth < _DEFAULT_MAX_DEPTH:
-                continue
-
-            callee_edges = sorted(
-                (
-                    edge
-                    for edge in callgraph.get(edge1.target_qname, [])
-                    if not edge.is_external
-                    and edge.target_qname in index_fn
-                    and edge.target_qname not in {caller_qname, edge1.target_qname}
-                ),
-                key=lambda edge: (edge.line, edge.target_qname, edge.call_type, edge.external_lib or ""),
-            )
-            for edge2 in callee_edges:
-                target2 = index_fn[edge2.target_qname]
-                for exception in source_exceptions[edge2.target_qname]:
-                    if (
-                        exception_escapes(target2, exception)
-                        and not _is_caught_at(target1, exception.exception_type, edge2.line)
-                        and not _is_caught_at(fn, exception.exception_type, edge1.line)
+        # ponytail: enumerate bounded simple paths; memoize catch contexts if wide graphs dominate.
+        pending: deque[tuple[str, tuple[tuple[str, int], ...]]] = deque([(caller_qname, ())])
+        while pending:
+            current, path = pending.popleft()
+            if path:
+                for exception in source_exceptions[current]:
+                    if exception_escapes(index_fn[current], exception) and all(
+                        not _is_caught_at(index_fn[ancestor], exception.exception_type, line) for ancestor, line in path
                     ):
-                        _add_propagated_exception(fn, exception, edge1.line, existing)
+                        _add_propagated_exception(fn, exception, path[0][1], existing, len(path))
+            if len(path) >= max_depth:
+                continue
+            visited = {ancestor for ancestor, _ in path} | {current}
+            for edge in sorted(callgraph.get(current, []), key=lambda item: (item.line, item.target_qname)):
+                if not edge.is_external and edge.target_qname in index_fn and edge.target_qname not in visited:
+                    pending.append((edge.target_qname, (*path, (current, edge.line))))

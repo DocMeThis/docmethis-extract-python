@@ -379,11 +379,11 @@ class TestSerialisation:
         assert fn["signature_confidence"] == "absent"
         assert fn["normal_return_status"] == "unknown"
 
-    def test_project_schema_version_increments_for_normal_return_field(self) -> None:
-        """The serialized public model uses the schema version carrying normal-return status."""
+    def test_project_schema_version_carries_exception_distances(self) -> None:
+        """The public model schema carries normal-return facts and exception distances."""
         project_record = ProjectRecord(project_root=Path("/projet"), project_name="test")
         data = json.loads(serialize_project(project_record))
-        assert data["schema_version"] == 3
+        assert data["schema_version"] == 4
 
     def test_valid_json(self) -> None:
         project_record = ProjectRecord(

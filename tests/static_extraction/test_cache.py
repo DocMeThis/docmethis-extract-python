@@ -169,7 +169,14 @@ class TestCacheFingerprint:
         intentional: it forces a decision about whether the field affects a ModuleRecord
         (-> EXTRACTION_CONFIG_FIELDS, otherwise a stale cache could be reused silently).
         """
-        non_extraction = {"exclude_patterns", "extra_exclude_patterns", "full_reanalysis"}
+        # Exception scopes are applied after the raw module cache has been restored.
+        non_extraction = {
+            "exclude_patterns",
+            "extra_exclude_patterns",
+            "full_reanalysis",
+            "exception_analysis_depth",
+            "exception_documentation_depth",
+        }
         fields = {field.name for field in dataclasses.fields(ConfigurationDocmethis)}
 
         assert fields == non_extraction | set(EXTRACTION_CONFIG_FIELDS)

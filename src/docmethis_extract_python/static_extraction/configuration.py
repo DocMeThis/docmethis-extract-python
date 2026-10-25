@@ -52,6 +52,10 @@ class ConfigurationDocmethis:
         Whether a full reanalysis is forced.
     mixin_max_methods : int
         Method threshold beyond which a *Mixin class is excluded by the heuristic.
+    exception_analysis_depth : int
+        Maximum exception propagation distance in call edges, defaulting to two.
+    exception_documentation_depth : int
+        Strict documentary scope, defaulting to local raises and direct callees.
 
     """
 
@@ -60,6 +64,19 @@ class ConfigurationDocmethis:
     full_reanalysis: bool = False
     # Method threshold beyond which a *Mixin class is excluded by the heuristic.
     mixin_max_methods: int = DEFAULT_MIXIN_MAX_METHODS
+    exception_analysis_depth: int = 2
+    exception_documentation_depth: int = 1
+
+    def __post_init__(self) -> None:
+        """Validate independent analysis and documentation exception depths."""
+        for name in ("exception_analysis_depth", "exception_documentation_depth"):
+            value = getattr(self, name)
+            if type(value) is not int or value < 0:
+                message = f"{name} must be a non-negative integer."
+                raise ValueError(message)
+        if self.exception_documentation_depth > self.exception_analysis_depth:
+            message = "exception_documentation_depth must not exceed exception_analysis_depth."
+            raise ValueError(message)
 
     @property
     def all_exclusion_patterns(self) -> tuple[str, ...]:
@@ -110,6 +127,8 @@ def load_configuration(root_project: Path) -> ConfigurationDocmethis:
     return ConfigurationDocmethis(
         extra_exclude_patterns=tuple(section.get("exclude_patterns", ())),
         mixin_max_methods=_read_mixin_max_methods(section, path_pyproject),
+        exception_analysis_depth=section.get("exception_analysis_depth", 2),
+        exception_documentation_depth=section.get("exception_documentation_depth", 1),
     )
 
 
