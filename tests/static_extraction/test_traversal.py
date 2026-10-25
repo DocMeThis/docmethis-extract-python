@@ -121,7 +121,16 @@ class TestDiscoverFiles:
         assert files == sorted(files)
 
     def test_gitignore_excludes_ignored_untracked_files_but_keeps_tracked_files(self, tmp_path: Path) -> None:
-        """Git exclusions apply to untracked files, not to files already in the index."""
+        """Git exclusions apply to untracked files, not to files already in the index.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            A test method that operates on the directory given by tmp_path. It writes a .gitignore file excluding ignored.py and
+            forced.py into that directory, creates visible.py, ignored.py, and forced.py there, initializes a Git repository in
+            it, adds .gitignore and force-adds forced.py to the index, then calls discover_files(tmp_path,
+            ConfigurationDocmethis()). It asserts that the returned relative paths equal {Path("visible.py"), Path("forced.py")}.
+        """
         (tmp_path / ".gitignore").write_text("ignored.py\nforced.py\n", encoding="utf-8")
         _create_file(tmp_path / "visible.py")
         _create_file(tmp_path / "ignored.py")
@@ -135,7 +144,15 @@ class TestDiscoverFiles:
         assert files == {Path("visible.py"), Path("forced.py")}
 
     def test_git_discovery_from_nested_root_uses_repository_paths(self, tmp_path: Path) -> None:
-        """A nested analysis root does not include sibling files from the worktree."""
+        """A nested analysis root does not include sibling files from the worktree.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            The test creates files under tmp_path and a nested project directory, initializes a git repository at tmp_path, then
+            calls discover_files on the nested project directory and asserts that only main.py is discovered, excluding generated
+            and sibling files.
+        """
         project = tmp_path / "project"
         _create_file(project / "main.py")
         _create_file(project / "generated" / "ignored.py")
