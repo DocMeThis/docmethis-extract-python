@@ -4,7 +4,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import subprocess
+from pathlib import Path
 
 from docmethis_extract_python.static_extraction.configuration import ConfigurationDocmethis
 from docmethis_extract_python.static_extraction.traversal import (
@@ -13,9 +14,6 @@ from docmethis_extract_python.static_extraction.traversal import (
     is_test_file,
     resolve_module_name,
 )
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 def _create_file(source_path: Path) -> Path:
@@ -121,6 +119,34 @@ class TestDiscoverFiles:
         config = ConfigurationDocmethis()
         files = discover_files(tmp_path, config)
         assert files == sorted(files)
+
+    def test_gitignore_excludes_ignored_untracked_files_but_keeps_tracked_files(self, tmp_path: Path) -> None:
+        """Git exclusions apply to untracked files, not to files already in the index."""
+        (tmp_path / ".gitignore").write_text("ignored.py\nforced.py\n", encoding="utf-8")
+        _create_file(tmp_path / "visible.py")
+        _create_file(tmp_path / "ignored.py")
+        _create_file(tmp_path / "forced.py")
+        subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+        subprocess.run(["git", "add", ".gitignore"], cwd=tmp_path, check=True, capture_output=True)
+        subprocess.run(["git", "add", "-f", "forced.py"], cwd=tmp_path, check=True, capture_output=True)
+
+        files = {path.relative_to(tmp_path) for path in discover_files(tmp_path, ConfigurationDocmethis())}
+
+        assert files == {Path("visible.py"), Path("forced.py")}
+
+    def test_git_discovery_from_nested_root_uses_repository_paths(self, tmp_path: Path) -> None:
+        """A nested analysis root does not include sibling files from the worktree."""
+        project = tmp_path / "project"
+        _create_file(project / "main.py")
+        _create_file(project / "generated" / "ignored.py")
+        _create_file(tmp_path / "sibling.py")
+        (tmp_path / ".gitignore").write_text("project/generated/\n", encoding="utf-8")
+        subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+        subprocess.run(["git", "add", ".gitignore"], cwd=tmp_path, check=True, capture_output=True)
+
+        files = {path.relative_to(project) for path in discover_files(project, ConfigurationDocmethis())}
+
+        assert files == {Path("main.py")}
 
     def test_portion(self, root_portion: Path) -> None:
         config = ConfigurationDocmethis()
